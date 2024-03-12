@@ -36,6 +36,15 @@ c:
 	./client
 
 	
+run: 
+	mkdir -p cmake/build
+	cd cmake/build && cmake ../.. && make
+
+s2: 
+	cmake/build/server 4657
+
+c2: 
+	cmake/build/client
 
 test: 
 	echo $(SOURCES)
