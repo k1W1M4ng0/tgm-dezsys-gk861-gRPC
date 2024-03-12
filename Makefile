@@ -20,10 +20,20 @@ $(OBJECTS): $(SOURCES)
 	g++ -c $(SOURCES)
 
 .PHONY: s
-s: $(OBJECTS)
-	g++ $(shell find -name '*.o') `pkgconf --libs grpc++` `pkgconf --libs protobuf` -pthread -o server
-	./server 4657
+# s: $(OBJECTS)
+# 	g++ $(shell find -name '*.o') `pkgconf --libs grpc++` `pkgconf --libs protobuf` -pthread -o server
+# 	./server 4657
+
+LDFLAGS += `pkgconf --libs grpc++` 
+LDFLAGS += `pkgconf --libs protobuf` 
 	
+s: 
+	g++ `find src/proto -name '*.cc'` src/server.cpp $(LDFLAGS) -o server
+	./server 4657
+
+c:
+	g++ `find src/proto -name '*.cc'` src/client.cpp $(LDFLAGS) -o client
+	./client
 
 	
 
