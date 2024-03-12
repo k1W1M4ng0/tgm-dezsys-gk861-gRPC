@@ -1,5 +1,40 @@
 # SYT Dezentrale Systeme GK861 gRPC
 
+## Questions
+
+### What is gRPC and why does it work accross languages and platforms?
+
+gRPC is a RPC framework that supports many languages.
+It uses Protocol Buffers (.proto files) to specify the RPC format, and uses the
+protoc compiler to support different languages and platforms.
+
+### Describe the RPC life cycle starting with the RPC client?
+
+The client has a stub that implements the same functions as the server, and the client
+can just call this function. Their implementations wrap the parameters into a protobuf message,
+and send it to the server, which handles this protobuf message and replies with another protobuf msg.
+
+### Describe the workflow of Protocol Buffers?
+
+First, you write a .proto file with the specifications, 
+then you execute `protoc` and it creates code in your specified language.
+Now you can use the code in your projects.
+
+### What are the benefits of using protocol buffers?
+
+It is very portable, and also backwards compatible.
+
+### When is the use of protocol not recommended?
+
+I think the question meant is "When is the use of Protocol Buffers not recommended?".
+If a human readable format is desired, one should use JSON instead.
+
+### List 3 different data types that can be used with protocol buffers?
+
+- string
+- int32
+- double
+
 ## Hello World with gRPC
 
 For the first basic task, I decided to implement a hello world program in C++.
