@@ -7,6 +7,14 @@ proto: proto/warehouse.proto
 	protoc -I proto --grpc_out=src/proto --plugin=protoc-gen-grpc=`which grpc_cpp_plugin` proto/warehouse.proto
 	protoc -I proto --cpp_out=src/proto proto/warehouse.proto
 
+protoPython: proto/warehouse.proto
+	mkdir -p python/src
+	python -m grpc_tools.protoc -I proto --python_out=python/src --pyi_out=python/src --grpc_python_out=python/src proto/warehouse.proto
+
+python:
+	python python/src/client.py
+
+
 SOURCES = $(shell (find src -name '*.cc';find src -name '*.cpp'))
 # SOURCES = (find src -name '*.cc';find src -name '*.cpp')
 # OBJECTS = $(shell echo $(SOURCES) | sed 's/$/.o/')
