@@ -1,25 +1,42 @@
-#include "proto/helloworld.grpc.pb.h"
-#include "proto/helloworld.pb.h"
+#include "proto/warehouse.grpc.pb.h"
+#include "proto/warehouse.pb.h"
 #include <grpcpp/grpcpp.h>
+#include <grpcpp/support/config.h>
 #include <grpcpp/support/status.h>
 #include <iostream>
 #include <string>
 
-using namespace helloworld;
+using namespace warehouse;
 using namespace grpc;
 
-class HelloWorldImpl final : public Greeter::Service {
-    Status SayHello(ServerContext* context, const HelloRequest* request,
-                    HelloReply* response) override {
-        std::string prefix{"Hello "};
-        response->set_message(prefix + request->name());
+const string warehouseApplicationID{"1"};
+
+class WarehouseService final : public Warehouse::Service {
+    Status getDataForID(ServerContext* context, const getDataRequest* request,
+                    WarehouseData* response) override {
+        int id = request->id();
+        string idStr = std::to_string(id);
+        response->set_warehouseapplicationid(warehouseApplicationID);
+        response->set_warehouseid(idStr);
+        response->set_warehousename("name " + idStr);
+        response->set_warehouseaddress("adress " + idStr);
+        response->set_warehousepostalcode(std::to_string(1200 + id));
+        response->set_warehousecity("city " + idStr);
+        response->set_warehousecountry("country " + idStr);
+        response->set_timestamp(idStr);
+
+        Product* p1 = response->add_productdata();
+        p1->set_productname("product " + idStr);
+
+        Product* p2 = response->add_productdata();
+        p2->set_productname("product2 " + idStr);
         return Status::OK;
     }
 };
 
 void RunServer(uint16_t port) {
   std::string server_address = absl::StrFormat("0.0.0.0:%d", port);
-  HelloWorldImpl service{};
+  WarehouseService service{};
 
   // grpc::EnableDefaultHealthCheckService(true);
   // grpc::reflection::InitProtoReflectionServerBuilderPlugin();
