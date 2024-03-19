@@ -11,6 +11,7 @@ protoPython: proto/warehouse.proto
 	mkdir -p python/src
 	python -m grpc_tools.protoc -I proto --python_out=python/src --pyi_out=python/src --grpc_python_out=python/src proto/warehouse.proto
 
+.PHONY: python
 python:
 	python python/src/client.py
 
