@@ -1,5 +1,5 @@
-#include "proto/helloworld.grpc.pb.h"
-#include "proto/helloworld.pb.h"
+#include "proto/warehouse.grpc.pb.h"
+#include "proto/warehouse.pb.h"
 #include <grpcpp/channel.h>
 #include <grpcpp/client_context.h>
 #include <grpcpp/create_channel.h>
@@ -8,52 +8,69 @@
 #include <memory>
 #include <string>
 
-using namespace helloworld;
+using namespace warehouse;
 using namespace grpc;
 
-class HelloWorldClient {
+class WarehouseClient {
     public:
-        HelloWorldClient(std::shared_ptr<grpc::Channel> channel) 
-            : stub(Greeter::NewStub(channel)) {}
+        WarehouseClient(std::shared_ptr<grpc::Channel> channel) 
+            : stub(Warehouse::NewStub(channel)) {}
 
-        std::string sendRequest(std::string name) {
-            HelloRequest request{};
-            request.set_name(name);
+        WarehouseData sendRequest(int id) {
+            getDataRequest request{};
+            request.set_id(id);
 
             // variable for the response
-            HelloReply reply{};
+            WarehouseData reply{};
 
             ClientContext context{};
 
 
             // actual rpc
-            Status status = stub->SayHello(&context, request, &reply);
+            Status status = stub->getDataForID(&context, request, &reply);
 
             if(status.ok()) {
-                return reply.message();
+                return reply;
             }
             else {
                 std::cout << status.error_code() << ": " << status.error_message() << '\n';
-                return "RPC Failed";
+                return {};
             }
         }
     private:
-        std::unique_ptr<Greeter::Stub> stub;
+        std::unique_ptr<Warehouse::Stub> stub;
 };
 
 
 void RunClient() {
     std::string targetAddress{"0.0.0.0:4657"};
-    HelloWorldClient client(
+    WarehouseClient client(
             CreateChannel(targetAddress, InsecureChannelCredentials())
             );
 
-    std::string response{};
-    std::string name{"Simon"};
+    WarehouseData response{};
+    int id{-1};
+    std::cout << "Enter the id: ";
+    std::cin >> id;
 
-    response = client.sendRequest(name);
+    response = client.sendRequest(id);
 
-    std::cout << response << '\n';
+    printf("WarehouseID: %s\n name: %s\n adress: %s %s %s %s\n time: %s\n",
+            response.warehouseid().c_str(),
+            response.warehousename().c_str(),
+            response.warehouseaddress().c_str(),
+            response.warehousepostalcode().c_str(),
+            response.warehousecity().c_str(),
+            response.warehousecountry().c_str(),
+            response.timestamp().c_str());
+    for(Product p : response.productdata()) {
+        printf("  ProductID: %s\n   name: %s\n   category: %s\n   quantity: %d %s\n   ",
+                p.productid().c_str(),
+                p.productname().c_str(),
+                p.productcategory().c_str(),
+                p.productquantity(),
+                p.productunit().c_str());
+    }
 }
 
 int main() {
