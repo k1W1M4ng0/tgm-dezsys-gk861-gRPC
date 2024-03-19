@@ -2,9 +2,10 @@ CXXFLAGS = -std=c++20
 
 .PHONY: proto
 
-proto: proto/helloworld.proto
-	protoc -I proto --grpc_out=src/proto --plugin=protoc-gen-grpc=`which grpc_cpp_plugin` proto/helloworld.proto
-	protoc -I proto --cpp_out=src/proto proto/helloworld.proto
+proto: proto/warehouse.proto
+	mkdir -p src/proto
+	protoc -I proto --grpc_out=src/proto --plugin=protoc-gen-grpc=`which grpc_cpp_plugin` proto/warehouse.proto
+	protoc -I proto --cpp_out=src/proto proto/warehouse.proto
 
 SOURCES = $(shell (find src -name '*.cc';find src -name '*.cpp'))
 # SOURCES = (find src -name '*.cc';find src -name '*.cpp')
