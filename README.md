@@ -184,12 +184,19 @@ Then, a request is sent and the response printed on stdout.
 ### running the program
 
 I created a Makefile with the following commands:
+- make proto: create the proto files
 - make run: compile
 - make s2: start the server
 - make c2: start the client
 
 Example:  
 ```bash
+# create proto output
+make proto
+
+# compile with cmake
+make run
+
 # starting the server
 cmake/build/server 4657
 # output:
@@ -202,6 +209,195 @@ cmake/build/client
 # Hello Simon
 ```
 
+## Warehouse data with gRPC
+
+The next task was to send a WarehouseData (from past exercises) via gRPC.
+
+Following parts needed to be changed:  
+- proto file
+- Makefile
+- CMakeLists
+- the implementation class in server.cpp
+- the stub in client.cpp
+- printing the result in client.cpp
+
+Diff: 
+
+```diff
+diff --git a/Makefile b/Makefile
+index 8bd661c..c0cd001 100644
+--- a/Makefile
++++ b/Makefile
+@@ -2,9 +2,10 @@ CXXFLAGS = -std=c++20
+ 
+ .PHONY: proto
+ 
+-proto: proto/helloworld.proto
+-	protoc -I proto --grpc_out=src/proto --plugin=protoc-gen-grpc=`which grpc_cpp_plugin` proto/helloworld.proto
+-	protoc -I proto --cpp_out=src/proto proto/helloworld.proto
++proto: proto/warehouse.proto
++	mkdir -p src/proto
++	protoc -I proto --grpc_out=src/proto --plugin=protoc-gen-grpc=`which grpc_cpp_plugin` proto/warehouse.proto
++	protoc -I proto --cpp_out=src/proto proto/warehouse.proto
+ 
+ SOURCES = $(shell (find src -name '*.cc';find src -name '*.cpp'))
+ # SOURCES = (find src -name '*.cc';find src -name '*.cpp')
+diff --git a/src/client.cpp b/src/client.cpp
+index eabf6ed..1beacdb 100644
+--- a/src/client.cpp
++++ b/src/client.cpp
+@@ -1,5 +1,5 @@
+-#include "proto/helloworld.grpc.pb.h"
+-#include "proto/helloworld.pb.h"
++#include "proto/warehouse.grpc.pb.h"
++#include "proto/warehouse.pb.h"
+ #include <grpcpp/channel.h>
+ #include <grpcpp/client_context.h>
+ #include <grpcpp/create_channel.h>
+@@ -8,52 +8,69 @@
+ #include <memory>
+ #include <string>
+ 
+-using namespace helloworld;
++using namespace warehouse;
+ using namespace grpc;
+ 
+-class HelloWorldClient {
++class WarehouseClient {
+     public:
+-        HelloWorldClient(std::shared_ptr<grpc::Channel> channel) 
+-            : stub(Greeter::NewStub(channel)) {}
++        WarehouseClient(std::shared_ptr<grpc::Channel> channel) 
++            : stub(Warehouse::NewStub(channel)) {}
+ 
+-        std::string sendRequest(std::string name) {
+-            HelloRequest request{};
+-            request.set_name(name);
++        WarehouseData sendRequest(int id) {
++            getDataRequest request{};
++            request.set_id(id);
+ 
+             // variable for the response
+-            HelloReply reply{};
++            WarehouseData reply{};
+ 
+             ClientContext context{};
+ 
+ 
+             // actual rpc
+-            Status status = stub->SayHello(&context, request, &reply);
++            Status status = stub->getDataForID(&context, request, &reply);
+ 
+             if(status.ok()) {
+-                return reply.message();
++                return reply;
+             }
+             else {
+                 std::cout << status.error_code() << ": " << status.error_message() << '\n';
+-                return "RPC Failed";
++                return {};
+             }
+         }
+     private:
+-        std::unique_ptr<Greeter::Stub> stub;
++        std::unique_ptr<Warehouse::Stub> stub;
+ };
+ 
+ 
+ void RunClient() {
+     std::string targetAddress{"0.0.0.0:4657"};
+-    HelloWorldClient client(
++    WarehouseClient client(
+             CreateChannel(targetAddress, InsecureChannelCredentials())
+             );
+ 
+-    std::string response{};
+-    std::string name{"Simon"};
++    WarehouseData response{};
++    int id{-1};
++    std::cout << "Enter the id: ";
++    std::cin >> id;
+ 
+-    response = client.sendRequest(name);
++    response = client.sendRequest(id);
+ 
+-    std::cout << response << '\n';
++    printf("WarehouseID: %s\n name: %s\n adress: %s %s %s %s\n time: %s\n",
++            response.warehouseid().c_str(),
++            response.warehousename().c_str(),
++            response.warehouseaddress().c_str(),
++            response.warehousepostalcode().c_str(),
++            response.warehousecity().c_str(),
++            response.warehousecountry().c_str(),
++            response.timestamp().c_str());
++    for(Product p : response.productdata()) {
++        printf("  ProductID: %s\n   name: %s\n   category: %s\n   quantity: %d %s\n   ",
++                p.productid().c_str(),
++                p.productname().c_str(),
++                p.productcategory().c_str(),
++                p.productquantity(),
++                p.productunit().c_str());
++    }
+ }
+ 
+ int main() {
+diff --git a/src/server.cpp b/src/server.cpp
+index 4fb237b..f1b39d6 100644
+--- a/src/server.cpp
++++ b/src/server.cpp
+@@ -1,25 +1,42 @@
+-#include "proto/helloworld.grpc.pb.h"
+-#include "proto/helloworld.pb.h"
++#include "proto/warehouse.grpc.pb.h"
++#include "proto/warehouse.pb.h"
+ #include <grpcpp/grpcpp.h>
++#include <grpcpp/support/config.h>
+ #include <grpcpp/support/status.h>
+ #include <iostream>
+ #include <string>
+ 
+-using namespace helloworld;
++using namespace warehouse;
+ using namespace grpc;
+ 
+-class HelloWorldImpl final : public Greeter::Service {
+-    Status SayHello(ServerContext* context, const HelloRequest* request,
+-                    HelloReply* response) override {
+-        std::string prefix{"Hello "};
+-        response->set_message(prefix + request->name());
++const string warehouseApplicationID{"1"};
++
++class WarehouseService final : public Warehouse::Service {
++    Status getDataForID(ServerContext* context, const getDataRequest* request,
++                    WarehouseData* response) override {
++        int id = request->id();
++        string idStr = std::to_string(id);
++        response->set_warehouseapplicationid(warehouseApplicationID);
++        response->set_warehouseid(idStr);
++        response->set_warehousename("name " + idStr);
++        response->set_warehouseaddress("adress " + idStr);
++        response->set_warehousepostalcode(std::to_string(1200 + id));
++        response->set_warehousecity("city " + idStr);
++        response->set_warehousecountry("country " + idStr);
++        response->set_timestamp(idStr);
++
++        Product* p1 = response->add_productdata();
++        p1->set_productname("product " + idStr);
++
++        Product* p2 = response->add_productdata();
++        p2->set_productname("product2 " + idStr);
+         return Status::OK;
+     }
+ };
+ 
+ void RunServer(uint16_t port) {
+   std::string server_address = absl::StrFormat("0.0.0.0:%d", port);
+-  HelloWorldImpl service{};
++  WarehouseService service{};
+ 
+   // grpc::EnableDefaultHealthCheckService(true);
+   // grpc::reflection::InitProtoReflectionServerBuilderPlugin();
+```
 
 # Sources
 
