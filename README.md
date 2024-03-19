@@ -399,8 +399,49 @@ index 4fb237b..f1b39d6 100644
    // grpc::reflection::InitProtoReflectionServerBuilderPlugin();
 ```
 
+## gRPC client in python
+
+I installed these dependencies (you can also do it with pip):
+
+pacman -S python-grpcio python-grpcio-tools
+
+Then I wrote some make commands:
+
+```make
+proto: proto/warehouse.proto
+	mkdir -p src/proto
+	protoc -I proto --grpc_out=src/proto --plugin=protoc-gen-grpc=`which grpc_cpp_plugin` proto/warehouse.proto
+	protoc -I proto --cpp_out=src/proto proto/warehouse.proto
+
+protoPython: proto/warehouse.proto
+	mkdir -p python/src
+	python -m grpc_tools.protoc -I proto --python_out=python/src --pyi_out=python/src --grpc_python_out=python/src proto/warehouse.proto
+```
+
+Code for the client:
+
+```python
+import grpc
+import warehouse_pb2
+import warehouse_pb2_grpc
+
+# Create a channel to the server
+with grpc.insecure_channel('localhost:4657') as channel:
+    # Create a stub (client)
+    stub = warehouse_pb2_grpc.WarehouseStub(channel)
+
+    # Create a request
+    request = warehouse_pb2.getDataRequest(id=123)
+
+    # Make the call
+    response = stub.getDataForID(request)
+
+    # Print the response
+    print(response)
+```
+
 # Sources
 
 - [official gRPC tutorial for C++](https://grpc.io/docs/languages/cpp/basics/)
 - [medium.com tutorial for C++](https://medium.com/@shradhasehgal/get-started-with-grpc-in-c-36f1f39367f4)
-
+- [python tutorial](https://grpc.io/docs/languages/python/quickstart/)
