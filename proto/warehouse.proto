@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package warehouse;
+import "google/protobuf/timestamp.proto";
+
+service Warehouse {
+    // gets the data for a warehouseID (not warehouseApplicationID)
+    rpc getDataForID (getDataRequest) returns (WarehouseData) {}
+}
+
+message getDataRequest {
+    int32 id = 1;
+}
+
+message WarehouseData {
+    string warehouseApplicationID = 1;
+    string warehouseID = 2;
+    string warehouseName = 3;
+    string warehouseAddress = 4;
+    string warehousePostalCode = 5;
+    string warehouseCity = 6;
+    string warehouseCountry = 7;
+    string timestamp = 8;
+    repeated Product productData = 9;
+}
+
+message Product {
+    string productID = 1;
+    string productName = 2;
+    string productCategory = 3;
+    int32 productQuantity = 4;
+    string productUnit = 5;
+}
